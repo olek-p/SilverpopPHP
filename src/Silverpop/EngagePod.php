@@ -27,12 +27,10 @@ class EngagePod {
      * Sets $this->_baseUrl based on the engage server specified in config
      */
     public function __construct($config) {
-
         // It would be a good thing to cache the jsessionid somewhere and reuse it across multiple requests
         // otherwise we are authenticating to the server once for every request
         $this->_baseUrl = 'http://api' . $config['engage_server'] . '.silverpop.com/XMLAPI';
         $this->_login($config['username'], $config['password']);
-
     }
 
     /**
@@ -41,14 +39,10 @@ class EngagePod {
      * @return bool
      */
     public function logOut() {
-      $data["Envelope"] = array(
-        "Body" => array(
-          "Logout" => ""
-        ),
-      );
-      $response = $this->_request($data);
-      $result = $response["Envelope"]["Body"]["RESULT"];
-      return $this->_isSuccess($result);
+        $data = $this->_prepareBody('Logout');
+        $response = $this->_request($data);
+        $result = $response['Envelope']['Body']['RESULT'];
+        return $this->_isSuccess($result);
     }
 
     /**
@@ -67,26 +61,15 @@ class EngagePod {
      *
      */
     public function getLists($listType = 2, $isPrivate = true, $folder = null) {
-        $data["Envelope"] = array(
-            "Body" => array(
-                "GetLists" => array(
-                    "VISIBILITY" => ($isPrivate ? '0' : '1'),
-                    "FOLDER_ID" => $folder,
-                    "LIST_TYPE" => $listType,
-                ),
-            ),
-        );
+        $data = $this->_prepareBody('GetLists', array(
+            'VISIBILITY' => ($isPrivate ? '0' : '1'),
+            'FOLDER_ID' => $folder,
+            'LIST_TYPE' => $listType,
+        ));
         $response = $this->_request($data);
-        $result = $response["Envelope"]["Body"]["RESULT"];
-        if ($this->_isSuccess($result)) {
-            if (isset($result['LIST']))
-                return $result['LIST'];
-            else {
-                return array(); //?
-            }
-        } else {
-            throw new \Exception("GetLists Error: ".$this->_getErrorFromResponse($response));
-        }
+        $result = $this->_checkResponse(__FUNCTION__, $response, array('LIST'));
+
+        return $result['LIST'];
     }
 
     /**
@@ -94,24 +77,13 @@ class EngagePod {
      *
      */
     public function getMailingTemplates($isPrivate = true) {
-        $data["Envelope"] = array(
-            "Body" => array(
-                "GetMailingTemplates" => array(
-                    "VISIBILITY" => ($isPrivate ? '0' : '1'),
-                ),
-            ),
-        );
+        $data = $this->_prepareBody('GetMailingTemplates', array(
+            'VISIBILITY' => ($isPrivate ? '0' : '1'),
+        ));
         $response = $this->_request($data);
-        $result = $response["Envelope"]["Body"]["RESULT"];
-        if ($this->_isSuccess($result)) {
-            if (isset($result['MAILING_TEMPLATE']))
-                return $result['MAILING_TEMPLATE'];
-            else {
-                return array(); //?
-            }
-        } else {
-            throw new \Exception("GetLists Error: ".$this->_getErrorFromResponse($response));
-        }
+        $result = $this->_checkResponse(__FUNCTION__, $response, array('MAILING_TEMPLATE'));
+
+        return $result['MAILING_TEMPLATE'];
     }
 
     /**
@@ -119,20 +91,13 @@ class EngagePod {
      *
      */
     public function calculateQuery($databaseID) {
-        $data["Envelope"] = array(
-            "Body" => array(
-                "CalculateQuery" => array(
-                    "QUERY_ID" => $databaseID,
-                ),
-            ),
-        );
+        $data = $this->_prepareBody('CalculateQuery', array(
+            'QUERY_ID' => $databaseID,
+        ));
         $response = $this->_request($data);
-        $result = $response["Envelope"]["Body"]["RESULT"];
-        if ($this->_isSuccess($result)) {
-            return $result["JOB_ID"];
-        } else {
-            throw new \Exception("Silverpop says: ".$response["Envelope"]["Body"]["Fault"]["FaultString"]);
-        }
+        $result = $this->_checkResponse(__FUNCTION__, $response, array('JOB_ID'));
+
+        return $result['JOB_ID'];
     }
 
     /**
@@ -140,20 +105,13 @@ class EngagePod {
      *
      */
     public function getScheduledMailings() {
-        $data['Envelope'] = array(
-            'Body' => array(
-                'GetSentMailingsForOrg' => array(
-                    'SCHEDULED' => null,
-                ),
-            ),
-        );
+        $data = $this->_prepareBody('GetSentMailingsForOrg', array(
+            'SCHEDULED' => null,
+        ));
         $response = $this->_request($data);
-        $result = $response["Envelope"]["Body"]["RESULT"];
-        if ($this->_isSuccess($result)) {
-            return $result;
-        } else {
-            throw new Exception("Silverpop says: ".$response["Envelope"]["Body"]["Fault"]["FaultString"]);
-        }
+        $result = $this->_checkResponse(__FUNCTION__, $response);
+
+        return $result;
     }
 
     /**
@@ -161,47 +119,36 @@ class EngagePod {
      *
      */
     public function getListMetaData($databaseID) {
-        $data["Envelope"] = array(
-            "Body" => array(
-                "GetListMetaData" => array(
-                    "LIST_ID" => $databaseID,
-                ),
-            ),
-        );
+        $data = $this->_prepareBody('GetListMetaData', array(
+            'LIST_ID' => $databaseID,
+        ));
         $response = $this->_request($data);
-        $result = $response["Envelope"]["Body"]["RESULT"];
-        if ($this->_isSuccess($result)) {
-            return $result;
-        } else {
-            throw new \Exception("Silverpop says: ".$response["Envelope"]["Body"]["Fault"]["FaultString"]);
-        }
+        $result = $this->_checkResponse(__FUNCTION__, $response);
+
+        return $result;
     }
 
     /**
      * Remove a contact
      *
      */
-    public function removeContact($databaseID, $email, $customer_id) {
-        $data["Envelope"] = array(
-            "Body" => array(
-                "RemoveRecipient" => array(
-                    "LIST_ID" => $databaseID,
-                    "EMAIL" => $email,
-                    "COLUMN" => array(array("NAME"=>"customer_id", "VALUE"=>$customer_id)),
-                ),
-            ),
-        );
+    public function removeContact($databaseID, $email, $customerId) {
+        $data = $this->_prepareBody('RemoveRecipient', array(
+            'LIST_ID' => $databaseID,
+            'EMAIL' => $email,
+            'COLUMN' => array(array('NAME'=>'customerId', 'VALUE'=>$customerId)),
+        ));
         $response = $this->_request($data);
-        $result = $response["Envelope"]["Body"]["RESULT"];
-        if ($this->_isSuccess($result)) {
-            return true;
-        } else {
-            if ($response["Envelope"]["Body"]["Fault"]["FaultString"]=="Error removing recipient from list. Recipient is not a member of this list."){
-                return true;
-            } else {
-                throw new \Exception("Silverpop says: ".$response["Envelope"]["Body"]["Fault"]["FaultString"]);
+        $result = $response['Envelope']['Body']['RESULT'];
+
+        if (!$this->_isSuccess($result)) {
+            $fault = $response['Envelope']['Body']['Fault']['FaultString'];
+            if ($fault != 'Error removing recipient from list. Recipient is not a member of this list.') {
+                throw new \Exception("Silverpop says: $fault");
             }
         }
+
+        return true;
     }
 
     /**
@@ -209,57 +156,35 @@ class EngagePod {
      *
      */
     public function addContact($databaseID, $updateIfFound, $columns, $contactListID = false, $sendAutoReply = false, $allowHTML = false) {
-        $data["Envelope"] = array(
-            "Body" => array(
-                "AddRecipient" => array(
-                    "LIST_ID" => $databaseID,
-                    "CREATED_FROM" => 1,         // 1 = created manually, 2 = opted in
-                    "SEND_AUTOREPLY"  => ($sendAutoReply ? 'true' : 'false'),
-                    "UPDATE_IF_FOUND" => ($updateIfFound ? 'true' : 'false'),
-                    "ALLOW_HTML" => ($allowHTML ? 'true' : 'false'),
-                    "CONTACT_LISTS" => ($contactListID) ? array("CONTACT_LIST_ID" => $contactListID) : '',
-                    "COLUMN" => array(),
-                ),
-            ),
-        );
+        $data = $this->_prepareBody('AddRecipient', array(
+            'LIST_ID' => $databaseID,
+            'CREATED_FROM' => 1,         // 1 = created manually, 2 = opted in
+            'SEND_AUTOREPLY'  => ($sendAutoReply ? 'true' : 'false'),
+            'UPDATE_IF_FOUND' => ($updateIfFound ? 'true' : 'false'),
+            'ALLOW_HTML' => ($allowHTML ? 'true' : 'false'),
+            'CONTACT_LISTS' => ($contactListID) ? array('CONTACT_LIST_ID' => $contactListID) : '',
+            'COLUMN' => array(),
+        ));
         foreach ($columns as $name => $value) {
-            $data["Envelope"]["Body"]["AddRecipient"]["COLUMN"][] = array("NAME" => $name, "VALUE" => $value);
+            $data['Envelope']['Body']['AddRecipient']['COLUMN'][] = array('NAME' => $name, 'VALUE' => $value);
         }
+
         $response = $this->_request($data);
-        $result = $response["Envelope"]["Body"]["RESULT"];
-        if ($this->_isSuccess($result)) {
-            if (isset($result['RecipientId']))
-                return $result['RecipientId'];
-            else {
-                throw new \Exception('Recipient added but no recipient ID was returned from the server.');
-            }
-        } else {
-            throw new \Exception("AddRecipient Error: ".$this->_getErrorFromResponse($response));
-        }
+        $result = $this->_checkResponse(__FUNCTION__, $response, array('RecipientId'));
+
+        return $result['RecipientId'];
     }
 
-    public function getContact($databaseID, $email)
-    {
-        $data["Envelope"] = array(
-            "Body" => array(
-                "SelectRecipientData" => array(
-                    "LIST_ID" => $databaseID,
-                    "EMAIL"   => $email
-                ),
-            ),
-        );
+    public function getContact($databaseID, $email) {
+        $data = $this->_prepareBody('SelectRecipientData', array(
+            'LIST_ID' => $databaseID,
+            'EMAIL'   => $email,
+        ));
 
         $response = $this->_request($data);
-        $result = $response["Envelope"]["Body"]["RESULT"];
-        if ($this->_isSuccess($result)) {
-            if (isset($result['RecipientId']))
-                return $result;
-            else {
-                throw new \Exception('Recipient added but no recipient ID was returned from the server.');
-            }
-        } else {
-            throw new \Exception("AddRecipient Error: ".$this->_getErrorFromResponse($response));
-        }
+        $result = $this->_checkResponse(__FUNCTION__, $response, array('RecipientId'));
+
+        return $result;
     }
 
     /**
@@ -268,36 +193,23 @@ class EngagePod {
      * @param  string $databaseID
      * @param  string $email
      *
-     * @throws \Exception
-     * @throw  Exception in case of error
      * @return int recipient ID
      */
     public function doubleOptInContact($databaseID, $email) {
-        $data["Envelope"] = array(
-            "Body" => array(
-                "DoubleOptInRecipient" => array(
-                    "LIST_ID"         => $databaseID,
-                    "COLUMN"          => array(
-                        array(
-                            'NAME'  => 'EMAIL',
-                            'VALUE' => $email,
-                        ),
-                    ),
+        $data = $this->_prepareBody('DoubleOptInRecipient', array(
+            'LIST_ID'         => $databaseID,
+            'COLUMN'          => array(
+                array(
+                    'NAME'  => 'EMAIL',
+                    'VALUE' => $email,
                 ),
             ),
-        );
+        ));
 
         $response = $this->_request($data);
-        $result = $response["Envelope"]["Body"]["RESULT"];
-        if ($this->_isSuccess($result)) {
-            if (isset($result['RecipientId']))
-                return $result['RecipientId'];
-            else {
-                throw new \Exception('Recipient added but no recipient ID was returned from the server.');
-            }
-        }
+        $result = $this->_checkResponse(__FUNCTION__, $response, array('RecipientId'));
 
-        throw new \Exception("DoubleOptInRecipient Error: ".$this->_getErrorFromResponse($response));
+        return $result['RecipientId'];
     }
 
     /**
@@ -307,34 +219,23 @@ class EngagePod {
      * @param string $oldEmail
      * @param array  $columns
      *
-     * @throws \Exception
      * @return int recipient ID
      */
     public function updateContact($databaseID, $oldEmail, $columns) {
-        $data["Envelope"] = array(
-            "Body" => array(
-                "UpdateRecipient" => array(
-                    "LIST_ID"         => $databaseID,
-                    "OLD_EMAIL"       => $oldEmail,
-                    "CREATED_FROM"    => 1,        // 1 = created manually
-                    "COLUMN" => array(),
-                ),
-            ),
-        );
+        $data = $this->_prepareBody('UpdateRecipient', array(
+            'LIST_ID' => $databaseID,
+            'OLD_EMAIL' => $oldEmail,
+            'CREATED_FROM' => 1,// 1 = created manually
+            'COLUMN' => array(),
+        ));
         foreach ($columns as $name => $value) {
-            $data["Envelope"]["Body"]["UpdateRecipient"]["COLUMN"][] = array("NAME" => $name, "VALUE" => $value);
-        }
-        $response = $this->_request($data);
-        $result = $response["Envelope"]["Body"]["RESULT"];
-        if ($this->_isSuccess($result)) {
-            if (isset($result['RecipientId']))
-                return $result['RecipientId'];
-            else {
-                throw new \Exception('Recipient added but no recipient ID was returned from the server.');
-            }
+            $data['Envelope']['Body']['UpdateRecipient']['COLUMN'][] = array('NAME' => $name, 'VALUE' => $value);
         }
 
-        throw new \Exception("UpdateRecipient Error: ".$this->_getErrorFromResponse($response));
+        $response = $this->_request($data);
+        $result = $this->_checkResponse(__FUNCTION__, $response, array('RecipientId'));
+
+        return $result['RecipientId'];
     }
 
     /**
@@ -344,32 +245,23 @@ class EngagePod {
      * @param string $email
      * @param array  $columns
      *
-     * @throws \Exception
      * @return boolean true on success
      */
     public function optOutContact($databaseID, $email, $columns = array()) {
-        $data["Envelope"] = array(
-            "Body" => array(
-                "OptOutRecipient" => array(
-                    "LIST_ID"         => $databaseID,
-                    "EMAIL"           => $email,
-                    "COLUMN" => array(),
-                ),
-            ),
-        );
+        $data = $this->_prepareBody('OptOutRecipient', array(
+            'LIST_ID' => $databaseID,
+            'EMAIL' => $email,
+            'COLUMN' => array(),
+        ));
         $columns['EMAIL'] = $email;
         foreach ($columns as $name => $value) {
-            $data["Envelope"]["Body"]["OptOutRecipient"]["COLUMN"][] = array("NAME" => $name, "VALUE" => $value);
+            $data['Envelope']['Body']['OptOutRecipient']['COLUMN'][] = array('NAME' => $name, 'VALUE' => $value);
         }
 
         $response = $this->_request($data);
-        $result = $response["Envelope"]["Body"]["RESULT"];
+        $this->_checkResponse(__FUNCTION__, $response);
 
-        if ($this->_isSuccess($result)) {
-            return true;
-        }
-
-        throw new \Exception("OptOutRecipient Error: ".$this->_getErrorFromResponse($response));
+        return true;
     }
 
     /**
@@ -383,56 +275,40 @@ class EngagePod {
      * @param        $condition
      * @param bool   $isPrivate
      *
-     * @throws \Exception
-     * @internal param string $columnName Column that the expression will run against
-     * @internal param string $operators Operator that will be used for the expression
-     * @internal param string $values
      * @return int ListID of the query that was created
      */
     public function createQuery($queryName, $parentListId, $parentFolderId, $condition, $isPrivate = true) {
-        $data['Envelope'] = array(
-            'Body' => array(
-                'CreateQuery' => array(
-                    'QUERY_NAME' => $queryName,
-                    'PARENT_LIST_ID' => $parentListId,
-                    'PARENT_FOLDER_ID' => $parentFolderId,
-                    'VISIBILITY' => ($isPrivate ? '0' : '1'),
-                    'CRITERIA' => array(
-                        'TYPE' => 'editable',
-                        'EXPRESSION' => $condition,
-                    ),
-                ),
+        $data = $this->_prepareBody('CreateQuery', array(
+            'QUERY_NAME' => $queryName,
+            'PARENT_LIST_ID' => $parentListId,
+            'PARENT_FOLDER_ID' => $parentFolderId,
+            'VISIBILITY' => ($isPrivate ? '0' : '1'),
+            'CRITERIA' => array(
+                'TYPE' => 'editable',
+                'EXPRESSION' => $condition,
             ),
-        );
+        ));
 
         $response = $this->_request($data);
-        $result = $response["Envelope"]["Body"]["RESULT"];
+        $result = $this->_checkResponse(__FUNCTION__, $response, array('ListId'));
 
-        if ($this->_isSuccess($result)) {
-            if (isset($result['ListId']))
-                return $result['ListId'];
-            else {
-                throw new \Exception('Query created but no query ID was returned from the server.');
-            }
-        } else {
-            throw new \Exception("createQuery Error: ".$this->_getErrorFromResponse($response));
-        }
+        return $result['ListId'];
     }
 
     /**
      * Send email
      *
-     * Sends an email to the specified list_id ($targetID) using the template
+     * Sends an email to the specified listId ($targetID) using the template
      * $templateID. You can optionally include substitutions that will act on
      * the template to fill in dynamic bits of data.
      *
      * ## Example
      *
-     *     $engage->sendEmail(123, 456, "Example Mailing with unique name", time() + 60, array(
+     *     $engage->sendEmail(123, 456, 'Example Mailing with unique name', time() + 60, array(
      *         'SUBSTITUTIONS' => array(
      *             array(
      *                 'NAME' => 'FIELD_IN_TEMPLATE',
-     *                 'VALUE' => "Dynamic value to replace in template",
+     *                 'VALUE' => 'Dynamic value to replace in template',
      *             ),
      *         )
      *     ));
@@ -445,41 +321,29 @@ class EngagePod {
      * @param bool|int $saveToSharedFolder
      * @param array    $suppressionLists
      *
-     * @throws \Exception
      * @return int $mailingID
      */
     public function sendEmail($templateID, $targetID, $mailingName, $scheduledTimestamp, $optionalElements = array(), $saveToSharedFolder = 0, $suppressionLists = array()) {
-        $data["Envelope"] = array(
-            "Body" => array(
-                "ScheduleMailing" => array(
-                    "SEND_HTML" => true,
-                    "SEND_TEXT" => true,
-                    "TEMPLATE_ID" => $templateID,
-                    "LIST_ID" => $targetID,
-                    "MAILING_NAME" => $mailingName,
-                    "VISIBILITY" => ($saveToSharedFolder ? '1' : '0'),
-                    "SCHEDULED" => date("m/d/Y h:i:s A",$scheduledTimestamp),
-                ),
-            ),
-        );
+        $data = $this->_prepareBody('ScheduleMailing', array(
+            'SEND_HTML' => true,
+            'SEND_TEXT' => true,
+            'TEMPLATE_ID' => $templateID,
+            'LIST_ID' => $targetID,
+            'MAILING_NAME' => $mailingName,
+            'VISIBILITY' => ($saveToSharedFolder ? '1' : '0'),
+            'SCHEDULED' => date('m/d/Y h:i:s A',$scheduledTimestamp),
+        ));
         foreach ($optionalElements as $key => $value) {
-            $data["Envelope"]["Body"]["ScheduleMailing"][$key] = $value;
+            $data['Envelope']['Body']['ScheduleMailing'][$key] = $value;
         }
-
         if (is_array($suppressionLists) && count($suppressionLists) > 0) {
-            $data["Envelope"]["Body"]["ScheduleMailing"]['SUPPRESSION_LISTS']['SUPPRESSION_LIST_ID'] = $suppressionLists;
+            $data['Envelope']['Body']['ScheduleMailing']['SUPPRESSION_LISTS']['SUPPRESSION_LIST_ID'] = $suppressionLists;
         }
 
         $response = $this->_request($data);
-        $result = $response["Envelope"]["Body"]["RESULT"];
-        if ($this->_isSuccess($result)) {
-            if (isset($result['MAILING_ID']))
-                return $result['MAILING_ID'];
-            else
-                throw new \Exception('Email scheduled but no mailing ID was returned from the server.');
-        } else {
-            throw new \Exception("SendEmail Error: ".$this->_getErrorFromResponse($response));
-        }
+        $result = $this->_checkResponse(__FUNCTION__, $response, array('MAILING_ID'));
+
+        return $result['MAILING_ID'];
     }
 
     /**
@@ -491,11 +355,11 @@ class EngagePod {
      *
      * ## Example
      *
-     *     $engage->sendMailing("someone@somedomain.com", 149482, array("COLUMNS" => array(
+     *     $engage->sendMailing('someone@somedomain.com', 149482, array('COLUMNS' => array(
      *         'COLUMN' => array(
      *             array(
      *                 'Name' => 'FIELD_IN_TEMPLATE',
-     *                 'Value' => "value to MATCH",
+     *                 'Value' => 'value to MATCH',
      *             ),
      *         )
      *     )));
@@ -504,32 +368,22 @@ class EngagePod {
      * @param int    $mailingID ID of template upon which to base the mailing.
      * @param array  $optionalKeys additional keys to match reciepent
      *
-     * @throws \Exception
      * @return int $mailingID
      */
     public function sendMailing($emailID, $mailingID, $optionalKeys = array()) {
-        $data["Envelope"] = array(
-            "Body" => array(
-                "SendMailing" => array(
-                    "MailingId"         => $mailingID,
-                    "RecipientEmail"    => $emailID,
-                ),
-            ),
-        );
+        $data = $this->_prepareBody('SendMailing', array(
+            'MailingId' => $mailingID,
+            'RecipientEmail' => $emailID,
+        ));
         foreach ($optionalKeys as $key => $value) {
-            $data["Envelope"]["Body"]["SendMailing"][$key] = $value;
+            $data['Envelope']['Body']['SendMailing'][$key] = $value;
         }
 
         $response = $this->_request($data);
-        $result = $response["Envelope"]["Body"]["RESULT"];
+        $this->_checkResponse(__FUNCTION__, $response);
 
-        if ($this->_isSuccess($result)) {
-            return true;
-        } else {
-            throw new \Exception("SendEmail Error: ".$this->_getErrorFromResponse($response));
-        }
+        return true;
     }
-
 
     /**
      * Import a table
@@ -540,29 +394,15 @@ class EngagePod {
      *
      */
     public function importTable($fileName, $mapFileName) {
-
-        $data["Envelope"] = array(
-            "Body" => array(
-                "ImportTable" => array(
-                    "MAP_FILE" => $mapFileName,
-                    "SOURCE_FILE" => $fileName,
-                ),
-            ),
-        );
+        $data = $this->_prepareBody('ImportTable', array(
+            'MAP_FILE' => $mapFileName,
+            'SOURCE_FILE' => $fileName,
+        ));
 
         $response = $this->_request($data);
-        $result = $response["Envelope"]["Body"]["RESULT"];
+        $result = $this->_checkResponse(__FUNCTION__, $response, array('JOB_ID'));
 
-        if ($this->_isSuccess($result)) {
-            if (isset($result['JOB_ID']))
-                return $result['JOB_ID'];
-            else {
-                throw new \Exception('Import table query created but no job ID was returned from the server.');
-            }
-        } else {
-            throw new \Exception("importTable Error: ".$this->_getErrorFromResponse($response));
-        }
-
+        return $result['JOB_ID'];
     }
 
     /**
@@ -574,107 +414,75 @@ class EngagePod {
      *
      */
     public function purgeTable($tableName, $isPrivate = true) {
-
-        $data["Envelope"] = array(
-            "Body" => array(
-                "PurgeTable" => array(
-                    "TABLE_NAME" => $tableName,
-                    "TABLE_VISIBILITY" => ($isPrivate ? '0' : '1'),
-                ),
-            ),
-        );
+        $data = $this->_prepareBody('PurgeTable', array(
+            'TABLE_NAME' => $tableName,
+            'TABLE_VISIBILITY' => ($isPrivate ? '0' : '1'),
+        ));
 
         $response = $this->_request($data);
-        $result = $response["Envelope"]["Body"]["RESULT"];
+        $result = $this->_checkResponse(__FUNCTION__, $response, array('JOB_ID'));
 
-        if ($this->_isSuccess($result)) {
-            if (isset($result['JOB_ID']))
-                return $result['JOB_ID'];
-            else {
-                throw new \Exception('Purge table query created but no job ID was returned from the server.');
-            }
-        } else {
-            throw new \Exception("purgeTable Error: ".$this->_getErrorFromResponse($response));
-        }
-
+        return $result['JOB_ID'];
     }
-    
+
     /**
-	 * This interface inserts or updates relational data
-	 *
-	 * For each Row that is passed in:
-	 * - If a row is found having the same key as the passed in row, update the record.
-	 * - If no matching row is found, insert a new row setting the column values to those passed in the request.
-	 *
-	 * Only one hundred rows may be passed in a single insertUpdateRelationalTable call!
-	 */
+     * This interface inserts or updates relational data
+     *
+     * For each Row that is passed in:
+     * - If a row is found having the same key as the passed in row, update the record.
+     * - If no matching row is found, insert a new row setting the column values to those passed in the request.
+     *
+     * Only one hundred rows may be passed in a single insertUpdateRelationalTable call!
+     */
     public function insertUpdateRelationalTable($tableId, $rows) {
-	    $processedRows = array();
+        $processedRows = array();
         $attribs = array();
-	    foreach($rows as $row) {
-		    $columns = array();
-		    foreach($row as $name => $value)
-		    {
-			    $columns['COLUMN'][] = $value;
-			    $attribs[5]['COLUMN'][] = array('name' => $name);
-		    }
-		    
-		    $processedRows['ROW'][] = $columns;
-	    }
-	    
-	    $data["Envelope"] = array(
-            "Body" => array(
-                "InsertUpdateRelationalTable" => array(
-                    "TABLE_ID" => $tableId,
-                    "ROWS" => $processedRows,
-                ),
-            ),
-        );
+
+        foreach ($rows as $row) {
+            $columns = array();
+            foreach ($row as $name => $value) {
+                $columns['COLUMN'][] = $value;
+                $attribs[5]['COLUMN'][] = array('name' => $name);
+            }
+            $processedRows['ROW'][] = $columns;
+        }
+
+        $data = $this->_prepareBody('InsertUpdateRelationalTable', array(
+            'TABLE_ID' => $tableId,
+            'ROWS' => $processedRows,
+        ));
 
         $response = $this->_request($data, array(), $attribs);
-        $result = $response["Envelope"]["Body"]["RESULT"];
+        $this->_checkResponse(__FUNCTION__, $response);
 
-        if ($this->_isSuccess($result)) {
-            return true;
-        } else {
-            throw new \Exception("insertUpdateRelationalTable Error: ".$this->_getErrorFromResponse($response));
-        }
+        return true;
     }
-    
-    /**
-	 * This interface deletes records from a relational table.
-	 */
-    public function deleteRelationalTableData($tableId, $rows) {
-	    $processedRows = array();
-        $attribs = array();
-	    foreach($rows as $row) {
-		    $columns = array();
-		    foreach($row as $name => $value)
-		    {
-			    $columns['KEY_COLUMN'][] = $value;
-			    $attribs[5]['KEY_COLUMN'][] = array('name' => $name);
-		    }
-		    
-		    $processedRows['ROW'][] = $columns;
-	    }
-	    
-	    $data["Envelope"] = array(
-            "Body" => array(
-                "DeleteRelationalTableData" => array(
-                    "TABLE_ID" => $tableId,
-                    "ROWS" => $processedRows,
-                ),
-            ),
-        );
-        
-        $response = $this->_request($data, array(), $attribs);
-        $result = $response["Envelope"]["Body"]["RESULT"];
 
-        if ($this->_isSuccess($result)) {
-            return true;
-        } else {
-            throw new \Exception("deleteRelationalTableData Error: ".$this->_getErrorFromResponse($response));
+    /**
+     * This interface deletes records from a relational table.
+     */
+    public function deleteRelationalTableData($tableId, $rows) {
+        $processedRows = array();
+        $attribs = array();
+
+        foreach ($rows as $row) {
+            $columns = array();
+            foreach ($row as $name => $value) {
+                $columns['KEY_COLUMN'][] = $value;
+                $attribs[5]['KEY_COLUMN'][] = array('name' => $name);
+            }
+            $processedRows['ROW'][] = $columns;
         }
+
+        $data = $this->_prepareBody('DeleteRelationalTableData', array(
+            'TABLE_ID' => $tableId,
+            'ROWS' => $processedRows,
+        ));
+
+        $response = $this->_request($data, array(), $attribs);
+        $this->_checkResponse(__FUNCTION__, $response);
+
+        return true;
     }
 
     /**
@@ -686,29 +494,15 @@ class EngagePod {
      *
      */
     public function importList($fileName, $mapFileName) {
-
-        $data["Envelope"] = array(
-            "Body" => array(
-                "ImportList" => array(
-                    "MAP_FILE" => $mapFileName,
-                    "SOURCE_FILE" => $fileName,
-                ),
-            ),
-        );
+        $data = $this->_prepareBody('ImportList', array(
+            'MAP_FILE' => $mapFileName,
+            'SOURCE_FILE' => $fileName,
+        ));
 
         $response = $this->_request($data);
-        $result = $response["Envelope"]["Body"]["RESULT"];
+        $result = $this->_checkResponse(__FUNCTION__, $response, array('JOB_ID'));
 
-        if ($this->_isSuccess($result)) {
-            if (isset($result['JOB_ID']))
-                return $result['JOB_ID'];
-            else {
-                throw new \Exception('Import list query created but no job ID was returned from the server.');
-            }
-        } else {
-            throw new \Exception("importList Error: ".$this->_getErrorFromResponse($response));
-        }
-
+        return $result['JOB_ID'];
     }
 
     /**
@@ -718,28 +512,76 @@ class EngagePod {
      *
      */
     public function getJobStatus($jobId) {
-
-        $data["Envelope"] = array(
-            "Body" => array(
-                "GetJobStatus" => array(
-                    "JOB_ID" => $jobId
-                ),
-            ),
-        );
+        $data = $this->_prepareBody('GetJobStatus', array(
+            'JOB_ID' => $jobId,
+        ));
 
         $response = $this->_request($data);
-        $result = $response["Envelope"]["Body"]["RESULT"];
+        $result = $this->_checkResponse(__FUNCTION__, $response, array('JOB_STATUS'));
 
-        if ($this->_isSuccess($result)) {
-            if (isset($result['JOB_STATUS']))
-                return $result;
-            else {
-                throw new Exception('Job status query was successful but no status was found.');
-            }
-        } else {
-            throw new \Exception("getJobStatus Error: ".$this->_getErrorFromResponse($response));
-        }
+        return $result;
+    }
 
+    public function exportTable($tableName) {
+        $data = $this->_prepareBody('ExportTable', array(
+            'TABLE_NAME' => $tableName,
+            'TABLE_VISIBILITY' => 1,
+            'EXPORT_FORMAT' => 'CSV',
+        ));
+
+        $response = $this->_request($data);
+        $result = $this->_checkResponse(__FUNCTION__, $response, array('JOB_ID', 'FILE_PATH'));
+
+        return array($result['JOB_ID'], $result['FILE_PATH']);
+    }
+
+    public function createTable($tableName, array $columns) {
+        $data = $this->_prepareBody('CreateTable' => array(
+            'TABLE_NAME' => $tableName,
+            'COLUMNS' => array(
+                'COLUMN' => $columns,
+            ),
+        ));
+
+        $response = $this->_request($data);
+        $result = $this->_checkResponse(__FUNCTION__, $response, array('TABLE_ID'));
+
+        return $result['TABLE_ID'];
+    }
+
+    public function joinTable($tableId, $databaseId) {
+        $data = $this->_prepareBody('JoinTable', array(
+            'TABLE_ID' => $tableId,
+            'TABLE_VISIBILITY' => 'SHARED',
+            'LIST_ID' => $databaseId,
+            'LIST_VISIBILITY' => 'SHARED',
+            'MAP_FIELD' => array(
+                array(
+                    'TABLE_FIELD' => 'Country',
+                    'LIST_FIELD' => 'Country',
+                ),
+                array(
+                    'TABLE_FIELD' => 'Language',
+                    'LIST_FIELD' => 'Language',
+                ),
+            ),
+        ));
+
+        $response = $this->_request($data);
+        $result = $this->_checkResponse(__FUNCTION__, $response, array('JOB_ID'));
+
+        return $result['JOB_ID'];
+    }
+
+    public function deleteTable($tablename) {
+        $data = $this->_prepareBody('DeleteTable', array(
+            'TABLE_NAME' => $tablename,
+            'TABLE_VISIBILITY' => 1,
+        ));
+        $response = $this->_request($data);
+        $result = $this->_checkResponse(__FUNCTION__, $response, array('JOB_ID'));
+
+        return $result['JOB_ID'];
     }
 
     /**
@@ -747,23 +589,23 @@ class EngagePod {
      *
      */
     private function _login($username, $password) {
-        $data["Envelope"] = array(
-            "Body" => array(
-                "Login" => array(
-                    "USERNAME" => $username,
-                    "PASSWORD" => $password,
+        $data['Envelope'] = array(
+            'Body' => array(
+                'Login' => array(
+                    'USERNAME' => $username,
+                    'PASSWORD' => $password,
                 ),
             ),
         );
         $response = $this->_request($data);
-        $result = $response["Envelope"]["Body"]["RESULT"];
+        $result = $response['Envelope']['Body']['RESULT'];
         if ($this->_isSuccess($result)) {
             $this->_jsessionid = $result['SESSIONID'];
             $this->_session_encoding = $result['SESSION_ENCODING'];
             $this->_username = $username;
             $this->_password = $password;
         } else {
-            throw new \Exception("Login Error: ".$this->_getErrorFromResponse($response));
+            throw new \Exception('Login Error: '.$this->_getErrorFromResponse($response));
         }
     }
 
@@ -794,19 +636,19 @@ class EngagePod {
         }
 
         $fields = array(
-            "jsessionid" => isset($this->_jsessionid) ? $this->_jsessionid : '',
-            "xml" => $xml,
+            'jsessionid' => isset($this->_jsessionid) ? $this->_jsessionid : '',
+            'xml' => $xml,
         );
         $response = $this->_httpPost($fields);
         if ($response) {
             $arr =  \Silverpop\Util\xml2array($response);
-            if (isset($arr["Envelope"]["Body"]["RESULT"]["SUCCESS"])) {
+            if (isset($arr['Envelope']['Body']['RESULT']['SUCCESS'])) {
                 return $arr;
             } else {
-                throw new \Exception("HTTP Error: Invalid data from the server");
+                throw new \Exception('HTTP Error: Invalid data from the server');
             }
         } else {
-            throw new \Exception("HTTP request failed");
+            throw new \Exception('HTTP request failed');
         }
     }
 
@@ -826,7 +668,7 @@ class EngagePod {
         curl_setopt($ch,CURLOPT_POSTFIELDS,$fields_string);
         curl_setopt($ch,CURLOPT_RETURNTRANSFER,true);
         curl_setopt($ch,CURLOPT_HTTPHEADER,array (
-   "Content-Type: application/x-www-form-urlencoded; charset=utf-8" ));
+            'Content-Type: application/x-www-form-urlencoded; charset=utf-8' ));
 
         //execute post
         $result = curl_exec($ch);
@@ -850,13 +692,28 @@ class EngagePod {
 
     /**
      * Private method: determine whether a request was successful
-     *
      */
     private function _isSuccess($result) {
-        if (isset($result['SUCCESS']) && in_array(strtolower($result["SUCCESS"]), array('true', 'success'))) {
-            return true;
-        }
-        return false;
+        return isset($result['SUCCESS']) && in_array(strtolower($result['SUCCESS']), array('true', 'success'));
     }
 
+    private function _prepareBody($method, array $args = array()) {
+        return array('Envelope' => array('Body' => array($method => $args)));
+    }
+
+    private function _checkResponse($method, $response, array $fieldsToCheck = array()) {
+        $result = $response['Envelope']['Body']['RESULT'];
+
+        if (!$this->_isSuccess($result)) {
+            throw new \Exception($method . ' Error: ' . $this->_getErrorFromResponse($response));
+        }
+
+        foreach ($fieldsToCheck as $fieldToCheck) {
+            if (!isset($result[$fieldToCheck])) {
+                throw new \Exception("Method $method succeeded, but no $fieldToCheck was returned from the server.");
+            }
+        }
+
+        return $result;
+    }
 }
