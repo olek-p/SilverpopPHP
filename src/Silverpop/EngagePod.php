@@ -584,6 +584,37 @@ class EngagePod {
         return $result['JOB_ID'];
     }
 
+    public function addDbField($dbId, $name, $type, $default = null, $key = null) {
+        $fieldData = array(
+            'LIST_ID' => $dbId,
+            'COLUMN_NAME' => $name,
+            'COLUMN_TYPE' => $type,
+        );
+        if ($default) {
+            $fieldData['DEFAULT'] = $default;
+        }
+        if ($key) {
+            $fieldData['KEY_COLUMN'] = $key;
+        }
+
+        $data = $this->_prepareBody('AddListColumn', $fieldData);
+        $response = $this->_request($data);
+        $this->_checkResponse(__FUNCTION__, $response);
+
+        return true;
+    }
+
+    public function importTable($csvFile, $xmlFile) {
+        $data = $this->_prepareBody('ImportTable', array(
+            'MAP_FILE' => $xmlFile,
+            'SOURCE_FILE' => $csvFile,
+        ));
+        $response = $this->_request($data);
+        $result = $this->_checkResponse(__FUNCTION__, $response, array('JOB_ID'));
+
+        return $result['JOB_ID'];
+    }
+
     /**
      * Private method: authenticate with Silverpop
      *
