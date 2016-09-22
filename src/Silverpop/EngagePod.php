@@ -536,7 +536,7 @@ class EngagePod {
     }
 
     public function createTable($tableName, array $columns) {
-        $data = $this->_prepareBody('CreateTable' => array(
+        $data = $this->_prepareBody('CreateTable', array(
             'TABLE_NAME' => $tableName,
             'COLUMNS' => array(
                 'COLUMN' => $columns,
@@ -602,17 +602,6 @@ class EngagePod {
         $this->_checkResponse(__FUNCTION__, $response);
 
         return true;
-    }
-
-    public function importTable($csvFile, $xmlFile) {
-        $data = $this->_prepareBody('ImportTable', array(
-            'MAP_FILE' => $xmlFile,
-            'SOURCE_FILE' => $csvFile,
-        ));
-        $response = $this->_request($data);
-        $result = $this->_checkResponse(__FUNCTION__, $response, array('JOB_ID'));
-
-        return $result['JOB_ID'];
     }
 
     /**
