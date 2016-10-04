@@ -2,7 +2,7 @@
 
 namespace Silverpop;
 
-use Silverpop\Util\ArrayToXML;
+use GreenCape\Xml\Converter;
 
 class EngagePod {
 
@@ -452,7 +452,7 @@ class EngagePod {
             'ROWS' => $processedRows,
         ));
 
-        $response = $this->_request($data, array(), $attribs);
+        $response = $this->_request($data);
         $this->_checkResponse(__FUNCTION__, $response);
 
         return true;
@@ -479,7 +479,7 @@ class EngagePod {
             'ROWS' => $processedRows,
         ));
 
-        $response = $this->_request($data, array(), $attribs);
+        $response = $this->_request($data);
         $this->_checkResponse(__FUNCTION__, $response);
 
         return true;
@@ -605,6 +605,61 @@ class EngagePod {
     }
 
     /**
+     * Gets the list of Rulesets associated with $mailingId
+     * 
+     * @param int $mailingId 
+     * @return array
+     */
+    public function getMailingRulesets($mailingId) {
+        $data = $this->_prepareBody('ListDCRulesetsForMailing', array(
+            'MAILING_ID' => $mailingId,
+        ));
+
+        $response = $this->_request($data);
+        $result = $this->_checkResponse(__FUNCTION__, $response, array('RULESET'));
+
+        return $result['RULESET'];
+    }
+
+    /**
+     * Gets details of ruleset identified by $rulesetId
+     * 
+     * @param int $rulesetId
+     * @return array
+     */
+    public function getRulesetDetails($rulesetId) {
+        $data = $this->_prepareBody('GetDCRuleset', array(
+            'RULESET_ID' => $rulesetId,
+        ));
+
+        $response = $this->_request($data);
+        $result = $this->_checkResponse(__FUNCTION__, $response, array('RULESET'));
+
+        return $result['RULESET'];
+    }
+
+    /**
+     * Replaces ruleset contents
+     * 
+     * @param int $rulesetId
+     * @param array $contentAreas
+     * @param array $rules
+     * @return array
+     */
+    public function replaceRuleset($rulesetId, array $contentAreas, array $rules) {
+        $data = $this->_prepareBody('ReplaceDCRuleset', array(
+            'RULESET_ID' => $rulesetId,
+            'CONTENT_AREAS' => $contentAreas,
+            'RULES' => $rules,
+        ));
+
+        $response = $this->_request($data);
+        $result = $this->_checkResponse(__FUNCTION__, $response, array('RULESET_ID'));
+
+        return $result['RULESET_ID'];
+    }
+
+    /**
      * Private method: authenticate with Silverpop
      *
      */
@@ -641,15 +696,11 @@ class EngagePod {
      * Private method: make the request
      *
      */
-    private function _request($data, $replace = array(), $attribs = array()) {
+    private function _request($data) {
 
-        if (is_array($data))
-        {
-            $atx = new ArrayToXML($data, $replace, $attribs);;
-            $xml = $atx->getXML();
-        }
-        else
-        {
+        if (is_array($data)) {
+            $xml = new Converter($data);
+        } else {
             //assume raw xml otherwise, we need this because we have to build
             //  our own sometimes because assoc arrays don't support same name keys
             $xml = $data;
@@ -659,17 +710,18 @@ class EngagePod {
             'jsessionid' => isset($this->_jsessionid) ? $this->_jsessionid : '',
             'xml' => $xml,
         );
+
         $response = $this->_httpPost($fields);
-        if ($response) {
-            $arr =  \Silverpop\Util\xml2array($response);
-            if (isset($arr['Envelope']['Body']['RESULT']['SUCCESS'])) {
-                return $arr;
-            } else {
-                throw new \Exception('HTTP Error: Invalid data from the server');
-            }
-        } else {
+        if (!$response) {
             throw new \Exception('HTTP request failed');
         }
+
+        $arr = (new Converter($response))->data;
+        if (isset($arr['Envelope']['Body']['RESULT']['SUCCESS'])) {
+            return $arr;
+        }
+
+        throw new \Exception('HTTP Error: Invalid data from the server');
     }
 
     /**
