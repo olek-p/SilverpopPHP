@@ -2,7 +2,8 @@
 
 namespace Silverpop;
 
-use GreenCape\Xml\Converter;
+use LSS\Array2XML;
+use LSS\XML2Array;
 
 class EngagePod {
 
@@ -696,19 +697,10 @@ class EngagePod {
      * Private method: make the request
      *
      */
-    private function _request($data) {
-
-        if (is_array($data)) {
-            $xml = new Converter($data);
-        } else {
-            //assume raw xml otherwise, we need this because we have to build
-            //  our own sometimes because assoc arrays don't support same name keys
-            $xml = $data;
-        }
-
+    private function _request(array $data) {
         $fields = array(
             'jsessionid' => isset($this->_jsessionid) ? $this->_jsessionid : '',
-            'xml' => $xml,
+            'xml' => Array2XML::createXML('Envelope', $data),
         );
 
         $response = $this->_httpPost($fields);
@@ -716,7 +708,7 @@ class EngagePod {
             throw new \Exception('HTTP request failed');
         }
 
-        $arr = (new Converter($response))->data;
+        $arr = XML2Array::createArray($response);
         if (isset($arr['Envelope']['Body']['RESULT']['SUCCESS'])) {
             return $arr;
         }
