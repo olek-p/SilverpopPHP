@@ -167,7 +167,7 @@ class EngagePod {
             'COLUMN' => array(),
         ));
         foreach ($columns as $name => $value) {
-            $data['Envelope']['Body']['AddRecipient']['COLUMN'][] = array('NAME' => $name, 'VALUE' => $value);
+            $data['Body']['AddRecipient']['COLUMN'][] = array('NAME' => $name, 'VALUE' => $value);
         }
 
         $response = $this->_request($data);
@@ -230,7 +230,7 @@ class EngagePod {
             'COLUMN' => array(),
         ));
         foreach ($columns as $name => $value) {
-            $data['Envelope']['Body']['UpdateRecipient']['COLUMN'][] = array('NAME' => $name, 'VALUE' => $value);
+            $data['Body']['UpdateRecipient']['COLUMN'][] = array('NAME' => $name, 'VALUE' => $value);
         }
 
         $response = $this->_request($data);
@@ -256,7 +256,7 @@ class EngagePod {
         ));
         $columns['EMAIL'] = $email;
         foreach ($columns as $name => $value) {
-            $data['Envelope']['Body']['OptOutRecipient']['COLUMN'][] = array('NAME' => $name, 'VALUE' => $value);
+            $data['Body']['OptOutRecipient']['COLUMN'][] = array('NAME' => $name, 'VALUE' => $value);
         }
 
         $response = $this->_request($data);
@@ -335,10 +335,10 @@ class EngagePod {
             'SCHEDULED' => date('m/d/Y h:i:s A',$scheduledTimestamp),
         ));
         foreach ($optionalElements as $key => $value) {
-            $data['Envelope']['Body']['ScheduleMailing'][$key] = $value;
+            $data['Body']['ScheduleMailing'][$key] = $value;
         }
         if (is_array($suppressionLists) && count($suppressionLists) > 0) {
-            $data['Envelope']['Body']['ScheduleMailing']['SUPPRESSION_LISTS']['SUPPRESSION_LIST_ID'] = $suppressionLists;
+            $data['Body']['ScheduleMailing']['SUPPRESSION_LISTS']['SUPPRESSION_LIST_ID'] = $suppressionLists;
         }
 
         $response = $this->_request($data);
@@ -377,7 +377,7 @@ class EngagePod {
             'RecipientEmail' => $emailID,
         ));
         foreach ($optionalKeys as $key => $value) {
-            $data['Envelope']['Body']['SendMailing'][$key] = $value;
+            $data['Body']['SendMailing'][$key] = $value;
         }
 
         $response = $this->_request($data);
@@ -665,7 +665,7 @@ class EngagePod {
      *
      */
     private function _login($username, $password) {
-        $data['Envelope'] = array(
+        $data = array(
             'Body' => array(
                 'Login' => array(
                     'USERNAME' => $username,
@@ -700,7 +700,7 @@ class EngagePod {
     private function _request(array $data) {
         $fields = array(
             'jsessionid' => isset($this->_jsessionid) ? $this->_jsessionid : '',
-            'xml' => Array2XML::createXML('Envelope', $data),
+            'xml' => Array2XML::createXML('Envelope', $data)->saveXML(),
         );
 
         $response = $this->_httpPost($fields);
@@ -762,7 +762,7 @@ class EngagePod {
     }
 
     private function _prepareBody($method, array $args = array()) {
-        return array('Envelope' => array('Body' => array($method => $args)));
+        return array('Body' => array($method => $args));
     }
 
     private function _checkResponse($method, $response, array $fieldsToCheck = array()) {
