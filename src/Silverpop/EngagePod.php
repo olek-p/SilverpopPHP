@@ -19,8 +19,6 @@ class EngagePod {
     private $_baseUrl;
     private $_session_encoding;
     private $_jsessionid;
-    private $_username;
-    private $_password;
 
     /**
      * Constructor
@@ -28,10 +26,13 @@ class EngagePod {
      * Sets $this->_baseUrl based on the engage server specified in config
      */
     public function __construct($config) {
-        // It would be a good thing to cache the jsessionid somewhere and reuse it across multiple requests
-        // otherwise we are authenticating to the server once for every request
         $this->_baseUrl = 'http://api' . $config['engage_server'] . '.silverpop.com/XMLAPI';
-        $this->_login($config['username'], $config['password']);
+        if (isset($config['jsessionid'])) {
+            $this->_jsessionid = $config['jsessionid'];
+            $this->_session_encoding = ";jsessionid={$config['jsessionid']}";
+        } else {
+            $this->_login($config['username'], $config['password']);
+        }
     }
 
     /**
@@ -675,14 +676,13 @@ class EngagePod {
         );
         $response = $this->_request($data);
         $result = $response['Envelope']['Body']['RESULT'];
-        if ($this->_isSuccess($result)) {
-            $this->_jsessionid = $result['SESSIONID'];
-            $this->_session_encoding = $result['SESSION_ENCODING'];
-            $this->_username = $username;
-            $this->_password = $password;
-        } else {
+
+        if (!$this->_isSuccess($result)) {
             throw new \Exception('Login Error: '.$this->_getErrorFromResponse($response));
         }
+
+        $this->_jsessionid = $result['SESSIONID'];
+        $this->_session_encoding = $result['SESSION_ENCODING'];
     }
 
     /**
@@ -754,6 +754,10 @@ class EngagePod {
         return 'Unknown Server Error';
     }
 
+    private function _isSessionExpired($response) {
+        return isset($response['Envelope']['Body']['Fault']['FaultCode']) && $response['Envelope']['Body']['Fault']['FaultCode'] == 145;
+    }
+
     /**
      * Private method: determine whether a request was successful
      */
@@ -769,6 +773,11 @@ class EngagePod {
         $result = $response['Envelope']['Body']['RESULT'];
 
         if (!$this->_isSuccess($result)) {
+            if ($this->_isSessionExpired($response)) {
+                $this->_jsessionid = null;
+                $this->_session_encoding = null;
+                throw new SessionExpired();
+            }
             throw new \Exception($method . ' Error: ' . $this->_getErrorFromResponse($response));
         }
 
@@ -780,4 +789,10 @@ class EngagePod {
 
         return $result;
     }
+
+    public function getSessionId() {
+        return $this->_jsessionid;
+    }
 }
+
+class SessionExpired extends \Exception {}
