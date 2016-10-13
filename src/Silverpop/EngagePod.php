@@ -736,6 +736,13 @@ class EngagePod {
 
         //execute post
         $result = curl_exec($ch);
+        if (!$result) {
+            $error = curl_error($ch);
+            if (!$error && !curl_errno($ch)) {
+                $this->_handleSessionExpired();
+            }
+            throw new \Exception('Error in HTTP call: '.curl_error($ch));
+        }
 
         //close connection
         curl_close($ch);
@@ -774,9 +781,7 @@ class EngagePod {
 
         if (!$this->_isSuccess($result)) {
             if ($this->_isSessionExpired($response)) {
-                $this->_jsessionid = null;
-                $this->_session_encoding = null;
-                throw new SessionExpired();
+                $this->_handleSessionExpired();
             }
             throw new \Exception($method . ' Error: ' . $this->_getErrorFromResponse($response));
         }
@@ -788,6 +793,12 @@ class EngagePod {
         }
 
         return $result;
+    }
+
+    private function _handleSessionExpired() {
+        $this->_jsessionid = null;
+        $this->_session_encoding = null;
+        throw new SessionExpired();
     }
 
     public function getSessionId() {
