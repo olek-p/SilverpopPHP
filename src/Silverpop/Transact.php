@@ -2,7 +2,8 @@
 
 namespace Silverpop;
 
-use Silverpop\Util\ArrayToXML;
+use LSS\Array2XML;
+use LSS\XML2Array;
 
 class Transact {
 
@@ -37,15 +38,15 @@ class Transact {
      *         'EMAIL' => 'som@email.tld',
                'BODY_TYPE' => 'HTML',
                'PERSONALIZATION' => array(
-	               array(
-		               'TAG_NAME' => 'SomeParam',
-		               'VALUE' => 'SomeValue'
-	               ),
-	               array(
-		               'TAG_NAME' => 'SomeParam',
-		               'VALUE' => 'SomeValue'
-	               )
-	            )
+                   array(
+                       'TAG_NAME' => 'SomeParam',
+                       'VALUE' => 'SomeValue'
+                   ),
+                   array(
+                       'TAG_NAME' => 'SomeParam',
+                       'VALUE' => 'SomeValue'
+                   )
+               )
      *     ));
      *
      * @param int   $campaingID ID of capaing upon which to base the mailing.
@@ -58,66 +59,51 @@ class Transact {
      * @return array RECIPIENT_DETAIL
      */
     public function submit($campaingID, $recipient, $transactionID = null, $showAllSendDetail = true, $sendAsBatch = false) {
-        $data["XTMAILING"] = array(
-	    	"CAMPAIGN_ID" => $campaingID,
-	    	"SHOW_ALL_SEND_DETAIL" => ($showAllSendDetail ? "true" : "false"),
-	    	"SEND_AS_BATCH" => ($sendAsBatch ? "true" : "false"),
-	    	"NO_RETRY_ON_FAILURE" => "true",
-	    	"RECIPIENT" => $recipient
+        $data = array(
+            "CAMPAIGN_ID" => $campaingID,
+            "SHOW_ALL_SEND_DETAIL" => ($showAllSendDetail ? "true" : "false"),
+            "SEND_AS_BATCH" => ($sendAsBatch ? "true" : "false"),
+            "NO_RETRY_ON_FAILURE" => "true",
+            "RECIPIENT" => $recipient
         );
-        
+
         if($transactionID !== null) {
-	        $data["XTMAILING"]["TRANSACTION_ID"] = $transactionID;
+            $data["TRANSACTION_ID"] = $transactionID;
         }
 
         $response = $this->_request($data);
-        
+
         $result = $response["XTMAILING_RESPONSE"];
-        
+
         if ($this->_isSuccess($result) && $result['EMAILS_SENT'] != 0) {
             return $result['RECIPIENT_DETAIL'];
         }
-        
+
         throw new \Exception("Silverpop\\Transact::submit Error: ".$this->_getErrorFromResponse($result));
     }
 
     /**
      * Private method: make the request
-     *
      */
-    private function _request($data, $replace = array(), $attribs = array()) {
-
-        if (is_array($data))
-        {
-            $atx = new ArrayToXML($data, $replace, $attribs);;
-            $xml = $atx->getXML();
-        }
-        else
-        {
-            //assume raw xml otherwise, we need this because we have to build
-            //  our own sometimes because assoc arrays don't support same name keys
-            $xml = $data;
-        }
-
+    private function _request(array $data) {
+        $xml = Array2XML::createXML('XTMAILING', $data)->saveXML();
         $jsessionid = isset($this->_jsessionid) ? $this->_jsessionid : '';
-        
+
         $response = $this->_httpPost($jsessionid, $xml);
-        if ($response) {
-            $arr =  \Silverpop\Util\xml2array($response);
-            return $arr;
-            if (isset($arr["XTMAILING_RESPONSE"])) {
-                return $arr;
-            } else {
-                throw new \Exception("HTTP Error: Invalid data from the server");
-            }
-        } else {
+        if (!$response) {
             throw new \Exception("HTTP request failed");
         }
+
+        $arr = XML2Array::createArray($response);
+        if (!isset($arr["XTMAILING_RESPONSE"])) {
+            throw new \Exception("HTTP Error: Invalid data from the server");
+        }
+
+        return $arr;
     }
 
     /**
      * Private method: post the request to the url
-     *
      */
     private function _httpPost($jsessionid, $xml) {
         //open connection
@@ -128,8 +114,8 @@ class Transact {
         curl_setopt($ch,CURLOPT_POSTFIELDS,$xml);
         curl_setopt($ch,CURLOPT_RETURNTRANSFER,true);
         curl_setopt($ch,CURLOPT_HTTPHEADER, array(
-	        'Content-Type: text/xml;charset=UTF-8',
-	        'Content-Length: '.strlen($xml)
+            'Content-Type: text/xml;charset=UTF-8',
+            'Content-Length: '.strlen($xml)
         ));
 
         //execute post
@@ -143,30 +129,23 @@ class Transact {
 
     /**
      * Private method: parse an error response from Silverpop
-     *
      */
     private function _getErrorFromResponse($result) {
-	    if($result['ERROR_CODE'] != 0) {
-			return $result['ERROR_STRING'];
-		}
-		
-		if($result['NUMBER_ERRORS'] != 0) {
-	    	return $result['RECIPIENT_DETAIL']['ERROR_STRING'];
-	    }
-	    
+        if ($result['ERROR_CODE'] != 0) {
+            return $result['ERROR_STRING'];
+        }
+
+        if ($result['NUMBER_ERRORS'] != 0) {
+            return $result['RECIPIENT_DETAIL']['ERROR_STRING'];
+        }
+
         return 'Unknown Server Error';
     }
 
     /**
      * Private method: determine whether a request was successful
-     *
      */
     private function _isSuccess($result) {
-	    if($result['ERROR_CODE'] == 0 && $result['NUMBER_ERRORS'] == 0) {
-		    return true;
-	    }
-	    
-        return false;
+        return $result['ERROR_CODE'] == 0 && $result['NUMBER_ERRORS'] == 0;
     }
-
 }
