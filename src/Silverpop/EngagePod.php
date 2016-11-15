@@ -177,10 +177,11 @@ class EngagePod {
         return $result['RecipientId'];
     }
 
-    public function getContact($databaseID, $email) {
+    public function getContact($databaseID, $email, array $columns = array()) {
         $data = $this->_prepareBody('SelectRecipientData', array(
             'LIST_ID' => $databaseID,
             'EMAIL'   => $email,
+            'COLUMN'  => $columns,
         ));
 
         $response = $this->_request($data);
