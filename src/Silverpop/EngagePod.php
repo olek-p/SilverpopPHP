@@ -757,7 +757,7 @@ class EngagePod {
      */
     private function _getErrorFromResponse($response) {
         if (isset($response['Envelope']['Body']['Fault']['FaultString']) && !empty($response['Envelope']['Body']['Fault']['FaultString'])) {
-            return $response['Envelope']['Body']['Fault']['FaultString'];
+            return $response['Envelope']['Body']['Fault']['FaultString']['@cdata'];
         }
         return 'Unknown Server Error';
     }
