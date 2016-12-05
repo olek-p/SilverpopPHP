@@ -538,6 +538,23 @@ class EngagePod {
         return array($result['JOB_ID'], $result['FILE_PATH']);
     }
 
+    public function exportDatabase($dbId, $dateFormat = null) {
+        $args = array(
+            'LIST_ID' => $dbId,
+            'EXPORT_TYPE' => 'ALL',
+            'EXPORT_FORMAT' => 'CSV',
+        );
+        if ($dateFormat) {
+            $args['LIST_DATE_FORMAT'] = $dateFormat;
+        }
+        $data = $this->_prepareBody('ExportList', $args);
+
+        $response = $this->_request($data);
+        $result = $this->_checkResponse(__FUNCTION__, $response, array('JOB_ID', 'FILE_PATH'));
+
+        return array($result['JOB_ID'], $result['FILE_PATH']);
+    }
+
     public function createTable($tableName, array $columns) {
         $data = $this->_prepareBody('CreateTable', array(
             'TABLE_NAME' => $tableName,
