@@ -552,22 +552,35 @@ class EngagePod {
         return $result['TABLE_ID'];
     }
 
-    public function joinTable($tableId, $databaseId) {
+    public function joinTable($tableId, $databaseId, array $fields = array()) {
+        $mapFields = array();
+        foreach ($fields as $tableField => $dbField) {
+            $mapFields[] = array(
+                'TABLE_FIELD' => $tableField,
+                'LIST_FIELD' => $dbField,
+            );
+        }
         $data = $this->_prepareBody('JoinTable', array(
             'TABLE_ID' => $tableId,
             'TABLE_VISIBILITY' => 'SHARED',
             'LIST_ID' => $databaseId,
             'LIST_VISIBILITY' => 'SHARED',
-            'MAP_FIELD' => array(
-                array(
-                    'TABLE_FIELD' => 'Country',
-                    'LIST_FIELD' => 'Country',
-                ),
-                array(
-                    'TABLE_FIELD' => 'Language',
-                    'LIST_FIELD' => 'Language',
-                ),
-            ),
+            'MAP_FIELD' => $mapFields,
+        ));
+
+        $response = $this->_request($data);
+        $result = $this->_checkResponse(__FUNCTION__, $response, array('JOB_ID'));
+
+        return $result['JOB_ID'];
+    }
+
+    public function unjoinTable($tableId, $databaseId) {
+        $data = $this->_prepareBody('JoinTable', array(
+            'TABLE_ID' => $tableId,
+            'TABLE_VISIBILITY' => 'SHARED',
+            'LIST_ID' => $databaseId,
+            'LIST_VISIBILITY' => 'SHARED',
+            'REMOVE' => '1',
         ));
 
         $response = $this->_request($data);
@@ -660,6 +673,27 @@ class EngagePod {
         $result = $this->_checkResponse(__FUNCTION__, $response, array('RULESET_ID'));
 
         return $result['RULESET_ID'];
+    }
+
+    /**
+     * Exports a mailing template
+     * 
+     * @param int $templateId
+     * @param bool $addToStoredFiles
+     * @return string
+     */
+    public function exportMailingTemplate($templateId, $addToStoredFiles = false) {
+        $fields = array('TEMPLATE_ID' => $rulesetId);
+        if ($addToStoredFiles) {
+            $fields['ADD_TO_STORED_FILES'] = true;
+        }
+
+        $data = $this->_prepareBody('ExportMailingTemplate', $fields);
+
+        $response = $this->_request($data);
+        $result = $this->_checkResponse(__FUNCTION__, $response, array('FILE_PATH'));
+
+        return $result['FILE_PATH'];
     }
 
     /**
