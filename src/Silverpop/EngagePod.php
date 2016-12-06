@@ -577,13 +577,23 @@ class EngagePod {
                 'LIST_FIELD' => $dbField,
             );
         }
-        $data = $this->_prepareBody('JoinTable', array(
-            'TABLE_ID' => $tableId,
+        $args = array(
             'TABLE_VISIBILITY' => 'SHARED',
-            'LIST_ID' => $databaseId,
             'LIST_VISIBILITY' => 'SHARED',
             'MAP_FIELD' => $mapFields,
-        ));
+        );
+        if (is_numeric($tableId)) {
+            $args['TABLE_ID'] = $tableId;
+        } else {
+            $args['TABLE_NAME'] = $tableId;
+        }
+        if (is_numeric($databaseId)) {
+            $args['LIST_ID'] = $databaseId;
+        } else {
+            $args['LISTNAME'] = $databaseId;
+        }
+
+        $data = $this->_prepareBody('JoinTable', $args);
 
         $response = $this->_request($data);
         $result = $this->_checkResponse(__FUNCTION__, $response, array('JOB_ID'));
