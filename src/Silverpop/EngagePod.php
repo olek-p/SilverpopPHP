@@ -590,7 +590,7 @@ class EngagePod {
         if (is_numeric($databaseId)) {
             $args['LIST_ID'] = $databaseId;
         } else {
-            $args['LISTNAME'] = $databaseId;
+            $args['LIST_NAME'] = $databaseId;
         }
 
         $data = $this->_prepareBody('JoinTable', $args);
