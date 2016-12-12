@@ -888,7 +888,7 @@ class EngagePod {
                 // "Forward To Friend Link is currently not supported via API however, the Element is element is required in order to call the API."
                 'ForwardType' => 0,
             ),
-        ));
+        );
         if ($folderPath) {
             $args['Header']['FolderPath'] = $folderPath;
         }
