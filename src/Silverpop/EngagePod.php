@@ -866,6 +866,32 @@ class EngagePod {
     public function getSessionId() {
         return $this->_jsessionid;
     }
+
+    public function createMailingTemplate($name, $fromName, $fromAddress, $replyTo, $folderPath, $subject, $trackLevel, $listId, $html, $clickThroughs, $isPrivate) {
+        $data = $this->_prepareBody('SaveMailing', array(
+            'Header' => array(
+                'MailingName' => array('@cdata' => $name),
+                'FromName' => array('@cdata' => $fromName),
+                'FromAddress' => array('@cdata' => $fromAddress),
+                'ReplyTo' => array('@cdata' => $replyTo),
+                'Visibility' => $isPrivate ? '0' : '1',
+                'FolderPath' => $folderPath,
+                'Subject' => $subject,
+                'TrackingLevel' => $trackLevel,
+                'Encoding' => 6, // UTF-8
+                'ListID' => $listId,
+            ),
+            'MessageBodies' => array(
+                'HTMLBody' => array('@cdata' => $body),
+            ),
+            'ClickThroughs' => $clickThroughs,
+        ));
+
+        $response = $this->_request($data);
+        $result = $this->_checkResponse(__FUNCTION__, $response, array('MailingID'));
+
+        return $result['MailingID'];
+    }
 }
 
 class SessionExpired extends \Exception {}
