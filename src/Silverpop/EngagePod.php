@@ -274,23 +274,24 @@ class EngagePod {
      *
      * @param string $queryName The name of the new query
      * @param int    $parentListId List that this query is derived from
-     * @param        $parentFolderId
-     * @param        $condition
+     * @param int    $parentFolderId
+     * @param array  $criteria
      * @param bool   $isPrivate
      *
      * @return int ListID of the query that was created
      */
-    public function createQuery($queryName, $parentListId, $parentFolderId, $condition, $isPrivate = true) {
-        $data = $this->_prepareBody('CreateQuery', array(
+    public function createQuery($queryName, $parentListId, $parentFolderId, $criteria, $isPrivate = true) {
+        $args = array(
             'QUERY_NAME' => $queryName,
             'PARENT_LIST_ID' => $parentListId,
-            'PARENT_FOLDER_ID' => $parentFolderId,
             'VISIBILITY' => ($isPrivate ? '0' : '1'),
-            'CRITERIA' => array(
-                'TYPE' => 'editable',
-                'EXPRESSION' => $condition,
-            ),
-        ));
+            'CRITERIA' => $criteria,
+        );
+        if ($parentFolderId) {
+            $args['PARENT_FOLDER_ID'] = $parentFolderId;
+        }
+
+        $data = $this->_prepareBody('CreateQuery', $args);
 
         $response = $this->_request($data);
         $result = $this->_checkResponse(__FUNCTION__, $response, array('ListId'));
