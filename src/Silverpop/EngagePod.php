@@ -723,6 +723,25 @@ class EngagePod {
         return $result['FILE_PATH'];
     }
 
+    public function addRuleset($listId, $name, $contentAreas, $rules, $mailingId = null) {
+        $args = array(
+            'LIST_ID' => $listId,
+            'RULESET_NAME' => $name,
+            'CONTENT_AREAS' => $contentAreas,
+            'RULES' => $rules,
+        );
+        if ($mailingId) {
+            $args['MAILING_ID'] = $mailingId;
+        }
+
+        $data = $this->_prepareBody('AddDCRuleset', $args);
+
+        $response = $this->_request($data);
+        $result = $this->_checkResponse(__FUNCTION__, $response, array('RULESET_ID'));
+
+        return $result['RULESET_ID'];
+    }
+
     /**
      * Private method: authenticate with Silverpop
      *
